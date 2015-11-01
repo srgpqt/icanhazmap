@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<title>MicroMap demo</title>
+
+	<style type="text/css">
+		html, body, #canvas {
+			width: 100%;
+			height: 100%;
+		}
+		body {
+			margin: 0;
+		}
+	</style>
+</head>
+<body>
+	<canvas id="canvas" width="100" height="100" moz-opaque></canvas>
+
+	<script type="text/javascript" src="../micromap.js"></script>
+
+	<script type="text/javascript">
+
+		var subdomains = ['a', 'b', 'c'];
+		// var subdomains = ['otile1', 'otile2', 'otile3'];
+		var subdomainIndex = 0;
+
+		var map, tileLayer;
+
+		function tileLoader(x, y, z, pixelRatio, onComplete) {
+			var subdomain = subdomains[(subdomainIndex++) % subdomains.length];
+			pixelRatio = (pixelRatio > 1) ? '@2x' : '';
+
+			function onLoad(error, tile) {
+				onComplete(error, tile);
+				map.render();
+			}
+
+			// return MicroMap.Loaders.loadImageElement('http://tiles.lyrk.org/lr/' + z + '/' + x + '/' + y + '.png', onLoad);
+			// return MicroMap.Loaders.loadImageXhr('http://' + subdomain + '.mqcdn.com/tiles/1.0.0/osm/' + z + '/' + x + '/' + y + '.png', onLoad);
+			// return MicroMap.Loaders.loadImageXhr('http://' + subdomain + '.tile.openstreetmap.org/' + z + '/' + x + '/' + y + '.png', onLoad);
+			return MicroMap.Loaders.loadImageXhr('http://' + subdomain + '.tile.stamen.com/toner/' + z + '/' + x + '/' + y + pixelRatio + '.png', onLoad);
+		}
+
+		var stops = [
+			[-71.330856, 46.751887],
+			[-71.323937, 46.758298],
+			[-71.322097, 46.759489],
+			[-71.316067, 46.763302],
+			[-71.310077, 46.767222],
+			[-71.307394, 46.769014],
+			[-71.301447, 46.772841],
+			[-71.296286, 46.772258],
+			[-71.292556, 46.769657],
+			[-71.290292, 46.768008],
+			[-71.286274, 46.768108],
+			[-71.283701, 46.769439],
+			[-71.280544, 46.771116],
+			[-71.277164, 46.77284],
+			[-71.270174, 46.7794],
+			[-71.262264, 46.783645],
+			[-71.255648, 46.787612],
+			[-71.249048, 46.791533],
+			[-71.243265, 46.794836],
+			[-71.239337, 46.796895],
+			[-71.234281, 46.799833],
+			[-71.229848, 46.802354],
+			[-71.226338, 46.804377],
+			[-71.221304, 46.807158],
+			[-71.217201, 46.808983],
+			[-71.215739, 46.812366],
+			[-71.219951, 46.812789],
+			[-71.223968, 46.813392],
+			[-71.220972, 46.814609],
+			[-71.217945, 46.815636],
+			[-71.215477, 46.817297],
+			[-71.217184, 46.822469],
+			[-71.220258, 46.824932],
+			[-71.225006, 46.829086],
+			[-71.224324, 46.832023],
+			[-71.222742, 46.836207],
+			[-71.221262, 46.839302],
+			[-71.220039, 46.841928],
+			[-71.216044, 46.846671],
+			[-71.210408, 46.849596],
+			[-71.205592, 46.851908],
+			[-71.200856, 46.853895],
+			[-71.195978, 46.856993],
+			[-71.192365, 46.859515],
+			[-71.190213, 46.860437],
+			[-71.187092, 46.862561],
+			[-71.185303, 46.864227],
+			[-71.183164, 46.86621],
+			[-71.180042, 46.868262],
+			[-71.175987, 46.871264],
+			[-71.174648, 46.872252],
+			[-71.171539, 46.874665],
+			[-71.168031, 46.87705],
+			[-71.162728, 46.881111],
+			[-71.158714, 46.884373],
+			[-71.159554, 46.888686],
+			[-71.155838, 46.888978],
+			[-71.149878, 46.890885]
+		];
+
+		tileLayer = new MicroMap.TileLayer({
+			loader: tileLoader
+		});
+
+		map = new MicroMap({
+			canvas: document.getElementById('canvas'),
+			center: [-71.2218521, 46.8135452],
+			maxZoom: 16,
+			zoomLevel: 12,
+			maxPixelRatio: 2,
+
+			render: function render() {
+				this.context.setTransform(1, 0, 0, 1, 0, 0);
+				this.context.fillStyle = '#ffffff';
+				this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+				this.renderTiles(tileLayer);
+
+				this.resetTransform();
+				this.context.fillStyle = '#0000ff';
+
+				for (var i = 0; i < stops.length; ++i) {
+					var c = this.project(stops[i]);
+					this.context.beginPath();
+					this.context.arc(c[0], c[1], 3, 0, Math.PI * 2.0);
+					this.context.fill();
+				}
+			}
+		});
+
+	</script>
+</body>
+</html>

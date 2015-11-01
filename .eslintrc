@@ -1,0 +1,15 @@
+{
+	"env": {
+		"browser": true
+	},
+	"rules": {
+		"indent": [2, "tab"],
+		"eqeqeq": [2, "allow-null"],
+		"quotes": [1, "single"],
+		"no-use-before-define": [2, "nofunc"],
+		"no-multi-spaces": 0,
+		"no-underscore-dangle": 0,
+		"consistent-return": 0,
+		"no-console": 0
+	}
+}

@@ -1,0 +1,18 @@
+{
+  "name": "micromap",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./node_modules/webpack-dev-server/bin/webpack-dev-server.js --progress --colors --inline --host 0.0.0.0",
+    "watch": "node ./node_modules/webpack/bin/webpack.js --progress --colors --watch",
+    "build": "node ./node_modules/webpack/bin/webpack.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Serge Paquet",
+  "license": "MIT",
+  "devDependencies": {
+    "webpack": "^1.12.2",
+    "webpack-dev-server": "^1.12.0"
+  }
+}
