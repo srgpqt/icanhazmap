@@ -1,0 +1,19 @@
+{
+  "name": "micromap",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack-dev-server --content-base examples --progress --colors --inline --host 0.0.0.0",
+    "watch": "webpack --progress --colors --watch",
+    "build": "npm run build:examples && npm run build:webpack",
+    "build:examples": "rsync -a --delete examples/ dist/",
+    "build:webpack": "webpack"
+  },
+  "author": "Serge Paquet",
+  "license": "MIT",
+  "devDependencies": {
+    "webpack": "^1.12.2",
+    "webpack-dev-server": "^1.12.0"
+  }
+}
