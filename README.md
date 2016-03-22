@@ -17,6 +17,6 @@
 | Mapbox       |      ✓      |    ✗     |      ✓       |     190.4 K |         52.4 K |
 | Leaflet      |      ✓      |    ✗     |    plugin    |     122.7 K |         32.6 K |
 | ModestMaps   |      ✗      |    ✗     |      ✗       |      44.9 K |         11.3 K |
-| **MicroMap** |      ✗      |    ✓     |    planned   |  **13.0 K** |      **4.0 K** |
+| **MicroMap** |      ✗      |    ✓     |      ✓       |  **15.0 K** |      **4.9 K** |
 
 Updated 2015-10-24.

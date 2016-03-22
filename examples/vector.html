@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+	<title>MicroMap demo</title>
+
+	<style type="text/css">
+		html, body, #canvas {
+			width: 100%;
+			height: 100%;
+		}
+		body {
+			margin: 0;
+			overflow: hidden;
+		}
+		#canvas {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+		}
+	</style>
+</head>
+<body>
+	<canvas id="canvas" width="100" height="100" moz-opaque></canvas>
+
+	<script type="text/javascript" src="micromap.js"></script>
+
+	<script type="text/javascript">
+
+		var map = new MicroMap({
+			canvas: document.getElementById('canvas'),
+			center: [-71.2218521, 46.8135452],
+			maxZoom: 20,
+			zoomLevel: 12,
+			maxPixelRatio: 2,
+			render: render
+		});
+
+		var tileLayer = new MicroMap.TileLayer({
+			loader: function tileLoader(x, y, z, pixelRatio, onComplete) {
+				function onLoad(error, tile) {
+					onComplete(error, tile);
+					map.render();
+				}
+
+				return MicroMap.Loaders.loadVectorXhr(map.projection, x, y, z, ['https://vector.mapzen.com/osm/all/' + z + '/' + x + '/' + y + '.topojson?api_key=vector-tiles-Mr7d5-Y'].join(''), onLoad);
+			}
+		});
+
+		function render() {
+			this.context.setTransform(1, 0, 0, 1, 0, 0);
+			this.context.fillStyle = '#ffffff';
+			this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+			this.renderTiles(tileLayer);
+		}
+
+	</script>
+</body>
+</html>
