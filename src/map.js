@@ -1,4 +1,4 @@
-var WebMercator = require('./mercator');
+var WebMercator = require('./web_mercator');
 
 var requestAnimationFrame = (
 	window.requestAnimationFrame ||
