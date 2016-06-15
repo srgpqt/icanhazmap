@@ -1,9 +1,8 @@
 var path = require('path');
-var webpack = require('webpack');
 
 module.exports = {
-	entry: './index.js',
 	devtool: 'source-map',
+	entry: './lib/index.js',
 	output: {
 		path: path.join(__dirname, 'dist'),
 		filename: 'micromap.js',

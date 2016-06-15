@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no" />
 	<title>MicroMap demo</title>
 
 	<style type="text/css">
@@ -92,7 +92,7 @@
 			[-71.149878, 46.890885]
 		];
 
-		var map = new MicroMap({
+		var map = new MicroMap.Map({
 			canvas: document.getElementById('canvas'),
 			center: [-71.2218521, 46.8135452],
 			maxZoom: 20,
@@ -106,7 +106,7 @@
 
 		var tileLayer = new MicroMap.TileLayer({
 			loader: function tileLoader(x, y, z, pixelRatio, onComplete) {
-				var subdomain = MicroMap.pickDomain(x, y, z, subdomains);
+				var subdomain = MicroMap.Map.pickDomain(x, y, z, subdomains);
 				pixelRatio = (pixelRatio > 1) ? '@2x' : '';
 
 				function onLoad(error, tile) {
