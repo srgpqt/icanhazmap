@@ -7,7 +7,7 @@ var requestAnimationFrame = (
 
 var PI2 = Math.PI * 2,
 	doubleTapDelay = 500,
-	doubleTapTolerance2 = 10 * 10,
+	doubleTapTolerance2 = 17 * 17,
 	animationDuration = 750,
 	rotationSnapStep = Math.PI * 0.25,
 	rotationSnapTolerance = Math.PI / 180 * 12,
