@@ -119,7 +119,7 @@ Map.prototype.resetTransform = function resetTransform() {
 	this.context.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
 };
 
-Map.prototype.getCenterLatLng = function getCenterLatLng() {
+Map.prototype.getCenterLngLat = function getCenterLngLat() {
 	var c = this.normalizedCenter;
 	return this.projection.denormalize(c[0], c[1]);
 };
