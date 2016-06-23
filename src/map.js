@@ -324,10 +324,9 @@ Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, pr
 		currentTouch0[1] - currentTouch1[1]
 	);
 
-	var lengthDelta = currentPolar[0] - previousPolar[0];
-	// var zoomLevel = this.zoomLevel + log2(currentPolar[0] / previousPolar[0]);
+	var zoomLevel = this.zoomLevel + log2(currentPolar[0] / previousPolar[0]);
 
-	this.setZoom(lengthDelta / this.nominalTileSize + this.zoomLevel);
+	this.setZoom(zoomLevel);
 
 	this.panByXY(
 		currentCenter[0] - previousCenter[0],
