@@ -41,7 +41,7 @@ function Map(options) {
 
 	this.minZoom   = options.minZoom || 0;
 	this.maxZoom   = options.maxZoom || 18;
-	this.zoomLevel = options.zoomLevel || 0;
+	this.zoom = options.zoom || 0;
 	this.nominalTileSize = options.nominalTileSize || 256;
 	this.maxPixelRatio = options.maxPixelRatio || 1;
 
@@ -110,7 +110,7 @@ Map.prototype.renderTiles = function renderTiles(layer) {
 	layer.render(
 		this.context,
 		this.canvas.width, this.canvas.height,
-		this.normalizedCenter, this.zoomLevel, this.rotation,
+		this.normalizedCenter, this.zoom, this.rotation,
 		this.pixelRatio, this.nominalTileSize
 	);
 };
@@ -134,7 +134,7 @@ Map.prototype.clientToLngLat = function clientToLngLat(clientCoords) {
 };
 
 Map.prototype.normalizedToClient = function normalizedToClient(v) {
-	var scale = Math.pow(2, this.zoomLevel) * this.nominalTileSize,
+	var scale = Math.pow(2, this.zoom) * this.nominalTileSize,
 		rotateCos = Math.cos(this.rotation),
 		rotateSin = Math.sin(this.rotation),
 		c = this.normalizedCenter,
@@ -148,7 +148,7 @@ Map.prototype.normalizedToClient = function normalizedToClient(v) {
 };
 
 Map.prototype.clientToNormalized = function clientToNormalized(v) {
-	var scale = Math.pow(2, this.zoomLevel) * this.nominalTileSize,
+	var scale = Math.pow(2, this.zoom) * this.nominalTileSize,
 		rotateCos = Math.cos(-this.rotation),
 		rotateSin = Math.sin(-this.rotation),
 		c = this.normalizedCenter,
@@ -176,19 +176,19 @@ Map.prototype.polarToClient = function polarToClient(v) {
 	];
 };
 
-Map.prototype.setView = function setView(normalizedCenter, zoomLevel, rotation, animate) {
+Map.prototype.setView = function setView(normalizedCenter, zoom, rotation, animate) {
 	normalizedCenter = [
 		wrap(normalizedCenter[0], 1.0),
 		wrap(normalizedCenter[1], 1.0)
 	];
 
-	zoomLevel = clamp(zoomLevel, this.minZoom, this.maxZoom);
+	zoom = clamp(zoom, this.minZoom, this.maxZoom);
 
 	rotation = wrap(rotation, PI2);
 
-	if (this.normalizedCenter !== normalizedCenter || this.zoomLevel !== zoomLevel || this.rotation !== rotation) {
+	if (this.normalizedCenter !== normalizedCenter || this.zoom !== zoom || this.rotation !== rotation) {
 		this.normalizedCenter = normalizedCenter;
-		this.zoomLevel = zoomLevel;
+		this.zoom = zoom;
 		this.rotation = rotation;
 
 		this.render();
@@ -196,7 +196,7 @@ Map.prototype.setView = function setView(normalizedCenter, zoomLevel, rotation, 
 		if (animate) {
 			this._animationStartTime = +(new Date());
 			this._animationStartCenter = this.normalizedCenter;
-			this._animationStartZoom = this.zoomLevel;
+			this._animationStartZoom = this.zoom;
 			this._animationStartRotation = this.rotation;
 
 			if (!this._animationFrame) {
@@ -207,37 +207,37 @@ Map.prototype.setView = function setView(normalizedCenter, zoomLevel, rotation, 
 };
 
 Map.prototype.setLngLat = function setLngLat(lng, lat, animate) {
-	return this.setView(this.projection.normalize(lng, lat), this.zoomLevel, this.rotation, animate);
+	return this.setView(this.projection.normalize(lng, lat), this.zoom, this.rotation, animate);
 };
 
-Map.prototype.setZoom = function setZoom(zoomLevel, animate) {
-	return this.setView(this.normalizedCenter, zoomLevel, this.rotation, animate);
+Map.prototype.setZoom = function setZoom(zoom, animate) {
+	return this.setView(this.normalizedCenter, zoom, this.rotation, animate);
 };
 
 Map.prototype.zoomAtXY = function zoomAtXY(zoomIncrement, around, animate) {
 	var c = this.normalizedCenter,
 		v = this.clientToNormalized(around);
 
-	return this.setView(c, this.zoomLevel + zoomIncrement, this.rotation, animate);
+	return this.setView(c, this.zoom + zoomIncrement, this.rotation, animate);
 };
 
 Map.prototype.panByXY = function panByXY(byX, byY, animate) {
-	var scale = Math.pow(2, this.zoomLevel) * this.nominalTileSize,
+	var scale = Math.pow(2, this.zoom) * this.nominalTileSize,
 		rotateCos = Math.cos(-this.rotation),
 		rotateSin = Math.sin(-this.rotation),
 		c = this.normalizedCenter,
 		x = c[0] - (byX * rotateCos - byY * rotateSin) / scale,
 		y = c[1] - (byX * rotateSin + byY * rotateCos) / scale
 
-	return this.setView([x, y], this.zoomLevel, this.rotation, animate);
+	return this.setView([x, y], this.zoom, this.rotation, animate);
 };
 
 Map.prototype.setRotation = function setRotation(radians, animate) {
-	this.setView(this.normalizedCenter, this.zoomLevel, radians, animate);
+	this.setView(this.normalizedCenter, this.zoom, radians, animate);
 };
 
 Map.prototype.rotate = function rotate(radians, animate) {
-	this.setView(this.normalizedCenter, this.zoomLevel, this.rotation + radians, animate);
+	this.setView(this.normalizedCenter, this.zoom, this.rotation + radians, animate);
 };
 
 Map.prototype.snapRotation = function snapRotation() {
@@ -324,9 +324,9 @@ Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, pr
 		currentTouch0[1] - currentTouch1[1]
 	);
 
-	var zoomLevel = this.zoomLevel + log2(currentPolar[0] / previousPolar[0]);
+	var zoom = this.zoom + log2(currentPolar[0] / previousPolar[0]);
 
-	this.setZoom(zoomLevel);
+	this.setZoom(zoom);
 
 	this.panByXY(
 		currentCenter[0] - previousCenter[0],
@@ -407,7 +407,7 @@ Map.prototype.onMouseMove = function onMouseMove(event) {
 			var previousPolar = this.clientToPolar(this._previousMouse),
 				currentPolar  = this.clientToPolar(current);
 
-			var zoomLevel = this.zoomLevel + log2(currentPolar[0] / previousPolar[0]),
+			var zoom = this.zoom + log2(currentPolar[0] / previousPolar[0]),
 				rotation = this.rotation + currentPolar[1] - previousPolar[1];
 				// rotation = this.rotation;
 
@@ -415,7 +415,7 @@ Map.prototype.onMouseMove = function onMouseMove(event) {
 			// 	rotation += currentPolar[1] - previousPolar[1];
 			// }
 
-			this.setView(this.normalizedCenter, zoomLevel, rotation);
+			this.setView(this.normalizedCenter, zoom, rotation);
 		}
 	}
 

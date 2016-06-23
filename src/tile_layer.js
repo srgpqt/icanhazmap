@@ -23,11 +23,11 @@ TileLayer.prototype.getTile = function getTile(tileX, tileY, tileZ, pixelRatio, 
 TileLayer.prototype.onTileComplete = function onTileComplete(key, error) {
 };
 
-TileLayer.prototype.render = function render(context, width, height, normalizedCenter, zoomLevel, rotation, pixelRatio, nominalTileSize) {
+TileLayer.prototype.render = function render(context, width, height, normalizedCenter, zoom, rotation, pixelRatio, nominalTileSize) {
 	var halfWidth    = width  >> 1,
 		halfHeight   = height >> 1,
-		zoomRound    = Math.round(zoomLevel),
-		zoomScale    = Math.pow(2, zoomLevel - zoomRound),
+		zoomRound    = Math.round(zoom),
+		zoomScale    = Math.pow(2, zoom - zoomRound),
 		tileSize     = Math.round(nominalTileSize * zoomScale) * pixelRatio,
 		halfTileSize = tileSize >> 1,
 		tileCount    = 1 << zoomRound;
