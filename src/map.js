@@ -6,6 +6,7 @@ var requestAnimationFrame = (
 );
 
 var PI2 = Math.PI * 2,
+	zoomRatios = [1, 16, 800],
 	doubleTapDelay = 500,
 	doubleTapTolerance2 = 17 * 17,
 	animationDuration = 750,
@@ -370,10 +371,10 @@ Map.prototype.onDragStart = function onDragStart(event) {
 
 Map.prototype.onWheel = function onWheel(event) {
 	event.preventDefault();
-	this.zoomAtXY(
-		log2(Math.abs(event.deltaY) + 1) * (event.deltaY < 0 ? -1 : 1) * -0.1,
-		[ event.clientX, event.clientY ]
-	);
+
+	var ratio = zoomRatios[event.deltaMode] || 1;
+
+	this.zoomAtXY(event.deltaY * ratio * -0.005, [ event.clientX, event.clientY ]);
 };
 
 Map.prototype.onDblClick = function onDblClick(event) {
