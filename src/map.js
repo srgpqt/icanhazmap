@@ -121,17 +121,23 @@ Map.prototype.resetTransform = function resetTransform() {
 };
 
 Map.prototype.getCenterLngLat = function getCenterLngLat() {
-	var c = this.normalizedCenter;
-	return this.projection.denormalize(c[0], c[1]);
+	return this.normalizedToLngLat(this.normalizedCenter);
 };
 
-Map.prototype.lngLatToClient = function lngLatToClient(coords) {
-	return this.normalizedToClient(this.projection.normalize(coords[0], coords[1]));
+Map.prototype.lngLatToClient = function lngLatToClient(lngLat) {
+	return this.normalizedToClient(this.lngLatToNormalized(lngLat));
 };
 
 Map.prototype.clientToLngLat = function clientToLngLat(clientCoords) {
-	var c = this.clientToNormalized(clientCoords);
-	return this.projection.denormalize(c[0], c[1]);
+	return this.normalizedToLngLat(this.clientToNormalized(clientCoords));
+};
+
+Map.prototype.lngLatToNormalized = function lngLatToNormalized(lngLat) {
+	return this.projection.normalize(+lngLat[0], +lngLat[1]);
+};
+
+Map.prototype.normalizedToLngLat = function normalizedToLngLat(normalizedCoords) {
+	return this.projection.denormalize(+normalizedCoords[0], +normalizedCoords[1]);
 };
 
 Map.prototype.normalizedToClient = function normalizedToClient(v) {
@@ -207,8 +213,8 @@ Map.prototype.setView = function setView(normalizedCenter, zoom, rotation, anima
 	}
 };
 
-Map.prototype.setLngLat = function setLngLat(lng, lat, animate) {
-	return this.setView(this.projection.normalize(lng, lat), this.zoom, this.rotation, animate);
+Map.prototype.setLngLat = function setLngLat(lngLat, animate) {
+	return this.setView(this.lngLatToNormalized(lngLat), this.zoom, this.rotation, animate);
 };
 
 Map.prototype.setZoom = function setZoom(zoom, animate) {
