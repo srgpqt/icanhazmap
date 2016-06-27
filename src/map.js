@@ -286,8 +286,9 @@ Map.prototype._checkDoubleTap = function _checkDoubleTap(touches) {
 		return;
 	}
 
-	var deltaX = touches[0].clientX - this._tappedTouch[0],
-		deltaY = touches[0].clientY - this._tappedTouch[1],
+	var touch = eventToClient(touches[0]),
+		deltaX = touch[0] - this._tappedTouch[0],
+		deltaY = touch[1] - this._tappedTouch[1],
 		distanceSq = deltaX * deltaX + deltaY * deltaY;
 
 	if (distanceSq > doubleTapTolerance2) {
@@ -374,25 +375,25 @@ Map.prototype.onWheel = function onWheel(event) {
 
 	var ratio = zoomRatios[event.deltaMode] || 1;
 
-	this.zoomAtXY(event.deltaY * ratio * -0.005, [ event.clientX, event.clientY ]);
+	this.zoomAtXY(event.deltaY * ratio * -0.005, eventToClient(event));
 };
 
 Map.prototype.onDblClick = function onDblClick(event) {
 	event.preventDefault();
 	this.zoomAtXY(
 		(event.altKey || event.shiftKey) ? -1 : 1,
-		[ event.clientX, event.clientY ]
+		eventToClient(event)
 	);
 };
 
 Map.prototype.onMouseDown = function onMouseDown(event) {
 	event.preventDefault();
-	this._previousMouse = this._startMouse = [event.clientX, event.clientY];
+	this._previousMouse = this._startMouse = eventToClient(event);
 	this._rotationLocked = null;
 };
 
 Map.prototype.onMouseMove = function onMouseMove(event) {
-	var current = [event.clientX, event.clientY];
+	var current = eventToClient(event);
 
 	event.preventDefault();
 
@@ -435,8 +436,8 @@ Map.prototype.onTouchStart = function onTouchStart(event) {
 	var touch0 = event.touches[0],
 		touch1 = event.touches[1];
 
-	this._previousTouch0 = this._startTouch0 = touch0 && [ touch0.clientX, touch0.clientY ];
-	this._previousTouch1 = this._startTouch1 = touch1 && [ touch1.clientX, touch1.clientY ];
+	this._previousTouch0 = this._startTouch0 = touch0 && eventToClient(touch0);
+	this._previousTouch1 = this._startTouch1 = touch1 && eventToClient(touch1);
 	this._rotationLocked = null;
 
 	if (this._checkDoubleTap(event.touches)) {
@@ -451,10 +452,7 @@ Map.prototype.onTouchStart = function onTouchStart(event) {
 
 Map.prototype.onDblTap = function onDblTap(event) {
 	event.preventDefault();
-	this.zoomAtXY(
-		1,
-		[ event.touches[0].clientX, event.touches[0].clientY ]
-	);
+	this.zoomAtXY(1, eventToClient(event.touches[0]));
 };
 
 Map.prototype.onTouchMove = function onTouchMove(event) {
@@ -462,8 +460,8 @@ Map.prototype.onTouchMove = function onTouchMove(event) {
 
 	var touch0 = event.touches[0],
 		touch1 = event.touches[1],
-		currentTouch0 = touch0 && [ touch0.clientX, touch0.clientY ],
-		currentTouch1 = touch1 && [ touch1.clientX, touch1.clientY ];
+		currentTouch0 = touch0 && eventToClient(touch0),
+		currentTouch1 = touch1 && eventToClient(touch1);
 
 	if (this._tappedTime != null && !this._checkDoubleTap(event.touches)) {
 		this._tappedTime = null;
@@ -524,5 +522,14 @@ function polarToCartesian(length, angle) {
 	return [
 		Math.cos(angle) * length,
 		Math.sin(angle) * length
+	];
+}
+
+function eventToClient(event) {
+	var bounds = event.target.getBoundingClientRect();
+
+	return [
+		event.clientX - bounds.left,
+		event.clientY - bounds.top
 	];
 }
