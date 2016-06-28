@@ -273,7 +273,7 @@ Map.prototype.trapRotation = function trapRotation(startPolar, currentPolar) {
 	}
 
 	var lengthDelta = currentPolar[0] - startPolar[0],
-		angleDelta  = wrapDelta(currentPolar[1], startPolar[1], PI2);
+		angleDelta  = wrapDelta(startPolar[1], currentPolar[1], PI2);
 
 	if (Math.abs(angleDelta) > rotationLockTolerance) {
 		this._rotationLocked = false;
@@ -514,7 +514,7 @@ function wrap(x, bound) {
 
 function wrapDelta(a, b, bound) {
 	var halfBound = 0.5 * bound;
-	return wrap(b - a + halfBound, bound) - halfBound;
+	return wrap(a - b + halfBound, bound) - halfBound;
 }
 
 function cartesianToPolar(x, y) {
