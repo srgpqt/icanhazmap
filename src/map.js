@@ -40,6 +40,7 @@ function Map(options) {
 	this.canvas  = options.canvas || document.createElement('canvas');
 	this.context = options.context || this.canvas.getContext('2d', { alpha: false });
 
+	this.eventMap = {};
 	this.minZoom   = options.minZoom || 0;
 	this.maxZoom   = options.maxZoom || 18;
 	this.zoom = options.zoom || 0;
@@ -69,6 +70,39 @@ function Map(options) {
 
 Map.pickDomain = function pickDomain(x, y, z, domains) {
 	return domains[(z * 211 + y * 61 + x) % domains.length];
+};
+
+Map.prototype.on = function on(eventName, callback) {
+	var callbacks = this.eventMap[eventName];
+
+	if (!callbacks) {
+		this.eventMap[eventName] = [callback];
+	}
+	else if (callbacks.indexOf(callback) === -1) {
+		callbacks.push(callback);
+	}
+};
+
+Map.prototype.off = function off(eventName, callback) {
+	var callbacks = this.eventMap[eventName];
+
+	if (callbacks) {
+		var index = callbacks.indexOf(callback);
+
+		if (index !== -1) {
+			callbacks.splice(index, 1);
+		}
+	}
+};
+
+Map.prototype._fire = function _fire(eventName, event) {
+	var callbacks = this.eventMap[eventName];
+
+	if (callbacks) {
+		for (var i = 0; i < callbacks.length; ++i) {
+			callbacks[i](event);
+		}
+	}
 };
 
 Map.prototype.destroy = function destroy() {
