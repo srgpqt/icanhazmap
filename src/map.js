@@ -53,7 +53,7 @@ function Map(options) {
 	this.rotation   = options.rotation || 0;
 	this.normalizedCenter = options.center ? this.projection.normalize(options.center[0], options.center[1]) : [0, 0];
 
-	this.render = options.render || noop;
+	this._render = options.render || noop;
 	this._resize = this.resize.bind(this, null, null);
 	this._didRefresh = this.didRefresh.bind(this);
 	this._renderAnimation = this.renderAnimation.bind(this);
@@ -110,7 +110,7 @@ Map.prototype._fire = function _fire(eventName, event) {
 Map.prototype.destroy = function destroy() {
 	this.unbindEvents();
 	window.removeEventListener('resize', this._resize);
-	this.render = noop;
+	this._render = noop;
 };
 
 Map.prototype.resize = function resize(width, height) {
@@ -129,6 +129,11 @@ Map.prototype.resize = function resize(width, height) {
 	this.canvas.height = Math.round((height || this.canvas.clientHeight) * this.pixelRatio);
 
 	this.render();
+};
+
+Map.prototype.render = function render() {
+	this._render();
+	this._fire('render');
 };
 
 Map.prototype.refresh = function refresh() {
