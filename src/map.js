@@ -282,17 +282,18 @@ Map.prototype._panByNormalized = function _panByNormalized(deltaCoords, duration
 	};
 };
 
-Map.prototype.zoomAtXY = function zoomAtXY(zoomIncrement, around, duration) {
-	return this.setZoom(this.zoom + zoomIncrement, duration)
-};
-
-Map.prototype.setZoom = function setZoom(zoom, duration) {
-	this._setZoom.apply(this, arguments);
+Map.prototype.zoomAtXY = function zoomAtXY(zoomDelta, around, duration) {
+	this._zoomBy(zoomDelta, duration)
 	this.renderAnimation();
 };
 
-Map.prototype._setZoom = function _setZoom(zoom, duration) {
-	zoom = clamp(zoom, this.minZoom, this.maxZoom);
+Map.prototype.setZoom = function setZoom(zoom, duration) {
+	this._zoomBy(zoom - this.zoom, duration);
+	this.renderAnimation();
+};
+
+Map.prototype._zoomBy = function _zoomBy(zoomDelta, duration) {
+	var zoom = clamp(this.zoom + zoomDelta, this.minZoom, this.maxZoom);
 
 	this.zoomTransition = {
 		startValue: this.zoom,
@@ -500,9 +501,7 @@ Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, pr
 		currentTouch0[1] - currentTouch1[1]
 	);
 
-	var zoom = this.zoom + log2(currentPolar[0] / previousPolar[0]);
-
-	this._setZoom(zoom, 0);
+	this._zoomBy(log2(currentPolar[0] / previousPolar[0]), 0);
 
 	this._panByXY(
 		currentCenter[0] - previousCenter[0],
@@ -604,7 +603,7 @@ Map.prototype.onMouseMove = function onMouseMove(event) {
 			var previousPolar = this.clientToPolar(this._previousMouse),
 				currentPolar  = this.clientToPolar(current);
 
-			this._setZoom(this.zoom + log2(currentPolar[0] / previousPolar[0]), 0);
+			this._zoomBy(log2(currentPolar[0] / previousPolar[0]), 0);
 
 			// if (!this.trapRotation(startPolar, currentPolar)) {
 			// 	rotation += currentPolar[1] - previousPolar[1];
