@@ -328,7 +328,9 @@ Map.prototype._setRotation = function _setRotation(radians, duration) {
 };
 
 Map.prototype._finalizeManipulation = function _finalizeManipulation(duration) {
-	this.snapRotation(duration);
+	this._rotate(this._snapRotation(this.rotation), duration);
+
+	this._scheduleRender();
 
 	if (this._isManipulatingCenter) {
 		this._isManipulatingCenter = false;
@@ -336,15 +338,17 @@ Map.prototype._finalizeManipulation = function _finalizeManipulation(duration) {
 	}
 }
 
-Map.prototype.snapRotation = function snapRotation(duration) {
-	var snapMod = wrap(this.rotation, rotationSnapStep);
+Map.prototype._snapRotation = function _snapRotation(rotation) {
+	var snapMod = wrap(rotation, rotationSnapStep);
 
 	if (snapMod < rotationSnapTolerance) {
-		this.rotate(-snapMod, duration);
+		return -snapMod;
 	}
 	else if ((rotationSnapStep - snapMod) < rotationSnapTolerance) {
-		this.rotate(rotationSnapStep - snapMod, duration);
+		return rotationSnapStep - snapMod;
 	}
+
+	return 0;
 };
 
 Map.prototype._scheduleRender = function _scheduleRender() {
