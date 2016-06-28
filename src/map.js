@@ -244,11 +244,10 @@ Map.prototype._panByXY = function _panByXY(byX, byY, duration) {
 	var scale = Math.pow(2, this.zoom) * this.nominalTileSize,
 		rotateCos = Math.cos(-this.rotation),
 		rotateSin = Math.sin(-this.rotation),
-		c = this.normalizedCenter,
-		normalizedX = c[0] - (byX * rotateCos - byY * rotateSin) / scale,
-		normalizedY = c[1] - (byX * rotateSin + byY * rotateCos) / scale
+		deltaX = -(byX * rotateCos - byY * rotateSin) / scale,
+		deltaY = -(byX * rotateSin + byY * rotateCos) / scale
 
-	return this.panToNormalized([normalizedX, normalizedY], duration);
+	return this._panByNormalized([deltaX, deltaY], duration);
 };
 
 Map.prototype.panToNormalized = function panToNormalized(normalizedCoords, duration) {
@@ -257,11 +256,18 @@ Map.prototype.panToNormalized = function panToNormalized(normalizedCoords, durat
 };
 
 Map.prototype._panToNormalized = function _panToNormalized(normalizedCoords, duration) {
+	return this._panByNormalized([
+		normalizedCoords[0] - this.normalizedCenter[0],
+		normalizedCoords[1] - this.normalizedCenter[1]
+	], duration);
+};
+
+Map.prototype._panByNormalized = function _panByNormalized(deltaCoords, duration) {
 	var now = new Date().getTime();
 
 	this.longitudeTransition = {
 		startValue: this.normalizedCenter[0],
-		delta: wrapDelta(normalizedCoords[0], this.normalizedCenter[0], 1.0),
+		delta: deltaCoords[0],
 		startTime: now,
 		duration: (duration != null) ? duration : defaultAnimationDuration,
 		active: true
@@ -269,7 +275,7 @@ Map.prototype._panToNormalized = function _panToNormalized(normalizedCoords, dur
 
 	this.latitudeTransition = {
 		startValue: this.normalizedCenter[1],
-		delta: wrapDelta(normalizedCoords[1], this.normalizedCenter[1], 1.0),
+		delta: deltaCoords[1],
 		startTime: now,
 		duration: (duration != null) ? duration : defaultAnimationDuration,
 		active: true
