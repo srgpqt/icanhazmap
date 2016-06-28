@@ -327,6 +327,15 @@ Map.prototype._setRotation = function _setRotation(radians, duration) {
 	};
 };
 
+Map.prototype._finalizeManipulation = function _finalizeManipulation(duration) {
+	this.snapRotation(duration);
+
+	if (this._isManipulatingCenter) {
+		this._isManipulatingCenter = false;
+		this._fire('moveend');
+	}
+}
+
 Map.prototype.snapRotation = function snapRotation(duration) {
 	var snapMod = wrap(this.rotation, rotationSnapStep);
 
@@ -603,10 +612,7 @@ Map.prototype.onMouseMove = function onMouseMove(event) {
 Map.prototype.onMouseUp = function onMouseUp(event) {
 	event.preventDefault();
 	this._previousMouse = null;
-	this.snapRotation();
-
-	this._isManipulatingCenter = false;
-	this._fire('moveend');
+	this._finalizeManipulation();
 };
 
 Map.prototype.onTouchStart = function onTouchStart(event) {
@@ -662,10 +668,7 @@ Map.prototype.onTouchEnd = function onTouchEnd(event) {
 	event.preventDefault();
 
 	this._previousTouch0 = this._previousTouch1 = null;
-	this.snapRotation();
-
-	this._isManipulatingCenter = false;
-	this._fire('moveend');
+	this._finalizeManipulation();
 
 	var client = eventToClient(event.changedTouches[0]);
 
