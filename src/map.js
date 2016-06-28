@@ -7,15 +7,16 @@ var requestAnimationFrame = (
 
 var PI2 = Math.PI * 2,
 	zoomRatios = [1, 16, 800],
-	doubleTapDelay = 500,
-	doubleTapTolerance2 = 17 * 17,
+	maxTapDuration = 500,
+	tapDistanceTolerance2 = 17 * 17,
 	animationDuration = 750,
 	rotationSnapStep = Math.PI * 0.25,
 	rotationSnapTolerance = Math.PI / 180 * 12,
 	rotationLockDeadZone = 40,
 	rotationLockTolerance = Math.PI / 180 * 8;
 
-var kWheel = 'wheel',
+var kClick = 'click',
+	kWheel = 'wheel',
 	kDblClick = 'dblclick',
 	kDragStart = 'dragstart',
 	kMouseDown = 'mousedown',
@@ -27,6 +28,7 @@ var kWheel = 'wheel',
 
 module.exports = Map;
 function Map(options) {
+	this.onClick = this.onClick.bind(this);
 	this.onWheel = this.onWheel.bind(this);
 	this.onDblClick = this.onDblClick.bind(this);
 	this.onDragStart = this.onDragStart.bind(this);
@@ -321,6 +323,24 @@ Map.prototype.trapRotation = function trapRotation(startPolar, currentPolar) {
 	return true;
 };
 
+Map.prototype._checkTap = function _checkTap(client) {
+	if (this._tappedTime == null) {
+		return;
+	}
+
+	var deltaX = client[0] - this._tappedTouch[0],
+		deltaY = client[1] - this._tappedTouch[1],
+		distanceSq = deltaX * deltaX + deltaY * deltaY;
+
+	if (distanceSq > tapDistanceTolerance2) {
+		return;
+	}
+
+	var now = new Date().getTime();
+
+	return (now - this._tappedTime) < maxTapDuration;
+};
+
 Map.prototype._checkDoubleTap = function _checkDoubleTap(touches) {
 	if (this._tappedTime == null || touches.length !== 1) {
 		return;
@@ -331,13 +351,13 @@ Map.prototype._checkDoubleTap = function _checkDoubleTap(touches) {
 		deltaY = touch[1] - this._tappedTouch[1],
 		distanceSq = deltaX * deltaX + deltaY * deltaY;
 
-	if (distanceSq > doubleTapTolerance2) {
+	if (distanceSq > tapDistanceTolerance2) {
 		return;
 	}
 
 	var now = new Date().getTime();
 
-	return (now - this._tappedTime) < doubleTapDelay;
+	return (now - this._tappedTime) < maxTapDuration;
 };
 
 Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, previousTouch1, currentTouch1, startTouch0, startTouch1) {
@@ -382,6 +402,7 @@ Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, pr
 
 Map.prototype.bindEvents = function bindEvents() {
 	var element = this.canvas;
+	element.addEventListener(kClick, this.onClick);
 	element.addEventListener(kDragStart, this.onDragStart);
 	element.addEventListener(kWheel, this.onWheel);
 	element.addEventListener(kDblClick, this.onDblClick);
@@ -395,6 +416,7 @@ Map.prototype.bindEvents = function bindEvents() {
 
 Map.prototype.unbindEvents = function unbindEvents() {
 	var element = this.canvas;
+	element.removeEventListener(kClick, this.onClick);
 	element.removeEventListener(kDragStart, this.onDragStart);
 	element.removeEventListener(kWheel, this.onWheel);
 	element.removeEventListener(kDblClick, this.onDblClick);
@@ -404,6 +426,17 @@ Map.prototype.unbindEvents = function unbindEvents() {
 	element.removeEventListener(kTouchStart, this.onTouchStart);
 	element.removeEventListener(kTouchMove, this.onTouchMove);
 	element.removeEventListener(kTouchEnd, this.onTouchEnd);
+};
+
+Map.prototype.onClick = function onClick(event) {
+	event.preventDefault();
+
+	var client = eventToClient(event);
+
+	if (this._checkTap(client)) {
+		var lngLat = this.clientToLngLat(client);
+		this._fire('click', {lngLat: lngLat});
+	}
 };
 
 Map.prototype.onDragStart = function onDragStart(event) {
@@ -430,6 +463,8 @@ Map.prototype.onMouseDown = function onMouseDown(event) {
 	event.preventDefault();
 	this._previousMouse = this._startMouse = eventToClient(event);
 	this._rotationLocked = null;
+	this._tappedTime = new Date().getTime();
+	this._tappedTouch = this._startMouse;
 };
 
 Map.prototype.onMouseMove = function onMouseMove(event) {
@@ -521,8 +556,17 @@ Map.prototype.onTouchMove = function onTouchMove(event) {
 
 Map.prototype.onTouchEnd = function onTouchEnd(event) {
 	event.preventDefault();
+
 	this._previousTouch0 = this._previousTouch1 = null;
 	this.snapRotation();
+
+	var client = eventToClient(event.changedTouches[0]);
+
+	if (event.touches.length === 0 && this._checkTap(client)) {
+		var lngLat = this.clientToLngLat(client);
+
+		this._fire('click', {lngLat: lngLat});
+	}
 };
 
 function noop() {}
