@@ -9,7 +9,7 @@ var PI2 = Math.PI * 2,
 	zoomRatios = [1, 16, 800],
 	maxTapDuration = 500,
 	tapDistanceTolerance2 = 17 * 17,
-	animationDuration = 750,
+	defaultAnimationDuration = 400,
 	rotationSnapStep = Math.PI * 0.25,
 	rotationSnapTolerance = Math.PI / 180 * 12,
 	rotationLockDeadZone = 40,
@@ -56,11 +56,14 @@ function Map(options) {
 	this._render = options.render || noop;
 	this._resize = this.resize.bind(this, null, null);
 	this._didRefresh = this.didRefresh.bind(this);
-	this._renderAnimation = this.renderAnimation.bind(this);
+	this._renderAnimation = this._renderAnimation.bind(this);
 	this._refreshing = false;
 	this._rotationLocked = false;
-	this._animationStartTime = 0;
 
+	this.longitudeTransition = {};
+	this.latitudeTransition  = {};
+	this.zoomTransition      = {};
+	this.rotationTransition  = {};
 
 	if (options.interactive !== false) {
 		this.bindEvents();
@@ -224,88 +227,172 @@ Map.prototype.polarToClient = function polarToClient(v) {
 	];
 };
 
-Map.prototype.setView = function setView(normalizedCenter, zoom, rotation, animate) {
-	normalizedCenter = [
-		wrap(normalizedCenter[0], 1.0),
-		wrap(normalizedCenter[1], 1.0)
-	];
-
-	zoom = clamp(zoom, this.minZoom, this.maxZoom);
-
-	rotation = wrap(rotation, PI2);
-
-	if (this.normalizedCenter !== normalizedCenter || this.zoom !== zoom || this.rotation !== rotation) {
-		this.normalizedCenter = normalizedCenter;
-		this.zoom = zoom;
-		this.rotation = rotation;
-
-		this.render();
-
-		if (animate) {
-			this._animationStartTime = +(new Date());
-			this._animationStartCenter = this.normalizedCenter;
-			this._animationStartZoom = this.zoom;
-			this._animationStartRotation = this.rotation;
-
-			if (!this._animationFrame) {
-				this._animationFrame = requestAnimationFrame(this._renderAnimation);
-			}
-		}
-	}
+Map.prototype.jumpTo = function jumpTo(coords) {
+	return this.panTo(coords, 0);
 };
 
-Map.prototype.setLngLat = function setLngLat(lngLat, animate) {
-	return this.setView(this.lngLatToNormalized(lngLat), this.zoom, this.rotation, animate);
+Map.prototype.panTo = function panTo(coords, duration) {
+	return this.panToNormalized(this.lngLatToNormalized(coords), duration);
 };
 
-Map.prototype.setZoom = function setZoom(zoom, animate) {
-	return this.setView(this.normalizedCenter, zoom, this.rotation, animate);
+Map.prototype.panByXY = function panByXY(byX, byY, duration) {
+	this._panByXY.apply(this, arguments);
+	this.renderAnimation();
 };
 
-Map.prototype.zoomAtXY = function zoomAtXY(zoomIncrement, around, animate) {
-	var c = this.normalizedCenter,
-		v = this.clientToNormalized(around);
-
-	return this.setView(c, this.zoom + zoomIncrement, this.rotation, animate);
-};
-
-Map.prototype.panByXY = function panByXY(byX, byY, animate) {
+Map.prototype._panByXY = function _panByXY(byX, byY, duration) {
 	var scale = Math.pow(2, this.zoom) * this.nominalTileSize,
 		rotateCos = Math.cos(-this.rotation),
 		rotateSin = Math.sin(-this.rotation),
 		c = this.normalizedCenter,
-		x = c[0] - (byX * rotateCos - byY * rotateSin) / scale,
-		y = c[1] - (byX * rotateSin + byY * rotateCos) / scale
+		normalizedX = c[0] - (byX * rotateCos - byY * rotateSin) / scale,
+		normalizedY = c[1] - (byX * rotateSin + byY * rotateCos) / scale
 
-	return this.setView([x, y], this.zoom, this.rotation, animate);
+	return this.panToNormalized([normalizedX, normalizedY], duration);
 };
 
-Map.prototype.setRotation = function setRotation(radians, animate) {
-	this.setView(this.normalizedCenter, this.zoom, radians, animate);
+Map.prototype.panToNormalized = function panToNormalized(normalizedCoords, duration) {
+	this._panToNormalized.apply(this, arguments);
+	this.renderAnimation();
 };
 
-Map.prototype.rotate = function rotate(radians, animate) {
-	this.setView(this.normalizedCenter, this.zoom, this.rotation + radians, animate);
+Map.prototype._panToNormalized = function _panToNormalized(normalizedCoords, duration) {
+	var now = new Date().getTime();
+
+	this.longitudeTransition = {
+		startValue: this.normalizedCenter[0],
+		delta: wrapDelta(normalizedCoords[0], this.normalizedCenter[0], 1.0),
+		startTime: now,
+		duration: (duration != null) ? duration : defaultAnimationDuration,
+		active: true
+	};
+
+	this.latitudeTransition = {
+		startValue: this.normalizedCenter[1],
+		delta: wrapDelta(normalizedCoords[1], this.normalizedCenter[1], 1.0),
+		startTime: now,
+		duration: (duration != null) ? duration : defaultAnimationDuration,
+		active: true
+	};
 };
 
-Map.prototype.snapRotation = function snapRotation() {
+Map.prototype.zoomAtXY = function zoomAtXY(zoomIncrement, around, duration) {
+	return this.setZoom(this.zoom + zoomIncrement, duration)
+};
+
+Map.prototype.setZoom = function setZoom(zoom, duration) {
+	this._setZoom.apply(this, arguments);
+	this.renderAnimation();
+};
+
+Map.prototype._setZoom = function _setZoom(zoom, duration) {
+	zoom = clamp(zoom, this.minZoom, this.maxZoom);
+
+	this.zoomTransition = {
+		startValue: this.zoom,
+		delta: zoom - this.zoom,
+		startTime: new Date().getTime(),
+		duration: (duration != null) ? duration : defaultAnimationDuration,
+		active: true
+	};
+};
+
+Map.prototype.rotate = function rotate(radians, duration) {
+	this._rotate.apply(this, arguments);
+	this.renderAnimation();
+};
+
+Map.prototype._rotate = function _rotate(radians, duration) {
+	this.rotationTransition = {
+		startValue: this.rotation,
+		delta: radians,
+		startTime: new Date().getTime(),
+		duration: (duration != null) ? duration : defaultAnimationDuration,
+		active: true
+	};
+};
+
+Map.prototype.setRotation = function setRotation(radians, duration) {
+	this._setRotation.apply(this, arguments);
+	this.renderAnimation();
+};
+
+Map.prototype._setRotation = function _setRotation(radians, duration) {
+	this.rotationTransition = {
+		startValue: this.rotation,
+		delta: wrapDelta(radians, this.rotation, PI2),
+		startTime: new Date().getTime(),
+		duration: (duration != null) ? duration : defaultAnimationDuration,
+		active: true
+	};
+};
+
+Map.prototype.snapRotation = function snapRotation(duration) {
 	var snapMod = wrap(this.rotation, rotationSnapStep);
 
 	if (snapMod < rotationSnapTolerance) {
-		this.rotate(-snapMod);
+		this.rotate(-snapMod, duration);
 	}
 	else if ((rotationSnapStep - snapMod) < rotationSnapTolerance) {
-		this.rotate(rotationSnapStep - snapMod);
+		this.rotate(rotationSnapStep - snapMod, duration);
 	}
 };
 
-Map.prototype.renderAnimation = function renderAnimation() {
-	if ((+(new Date()) - this._animationStartTime) < animationDuration) {
+Map.prototype._scheduleRender = function _scheduleRender() {
+	if (this._animationFrame == null) {
 		this._animationFrame = requestAnimationFrame(this._renderAnimation);
-	} else {
-		this._animationFrame = null;
 	}
+};
+
+Map.prototype._renderAnimation = function _renderAnimation() {
+	this._animationFrame = null;
+	this.renderAnimation();
+};
+
+Map.prototype.renderAnimation = function renderAnimation() {
+	var now = new Date().getTime(),
+		isMoving = false;
+
+	if (this.longitudeTransition.active) {
+		this.normalizedCenter = [wrap(lerp(now, this.longitudeTransition), 1), this.normalizedCenter[1]];
+		this.longitudeTransition.active = now < this.longitudeTransition.startTime + this.longitudeTransition.duration;
+		isMoving = true;
+	}
+
+	if (this.latitudeTransition.active) {
+		this.normalizedCenter = [this.normalizedCenter[0], wrap(lerp(now, this.latitudeTransition), 1)];
+		this.latitudeTransition.active = now < this.latitudeTransition.startTime + this.latitudeTransition.duration;
+		isMoving = true;
+	}
+
+	if (this.zoomTransition.active) {
+		this.zoom = lerp(now, this.zoomTransition);
+		this.zoomTransition.active = now < this.zoomTransition.startTime + this.zoomTransition.duration;
+	}
+
+	if (this.rotationTransition.active) {
+		this.rotation = wrap(lerp(now, this.rotationTransition), PI2);
+		this.rotationTransition.active = now < this.rotationTransition.startTime + this.rotationTransition.duration;
+	}
+
+	if (
+		this.longitudeTransition.active ||
+		this.latitudeTransition.active ||
+		this.zoomTransition.active ||
+		this.rotationTransition.active
+	) {
+		this._scheduleRender();
+	}
+
 	this.render();
+
+	if (isMoving) {
+		this._fire('move');
+
+		if (!this._isManipulatingCenter && !this.longitudeTransition.active && !this.latitudeTransition.active) {
+			this._fire('moveend');
+		}
+	}
 };
 
 Map.prototype.trapRotation = function trapRotation(startPolar, currentPolar) {
@@ -366,10 +453,13 @@ Map.prototype._checkDoubleTap = function _checkDoubleTap(touches) {
 };
 
 Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, previousTouch1, currentTouch1, startTouch0, startTouch1) {
+	this._isManipulatingCenter = true;
+
 	if (currentTouch1 == null) {
 		return this.panByXY(
 			currentTouch0[0] - previousTouch0[0],
-			currentTouch0[1] - previousTouch0[1]
+			currentTouch0[1] - previousTouch0[1],
+			0
 		);
 	}
 
@@ -393,16 +483,19 @@ Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, pr
 
 	var zoom = this.zoom + log2(currentPolar[0] / previousPolar[0]);
 
-	this.setZoom(zoom);
+	this._setZoom(zoom, 0);
 
-	this.panByXY(
+	this._panByXY(
 		currentCenter[0] - previousCenter[0],
-		currentCenter[1] - previousCenter[1]
+		currentCenter[1] - previousCenter[1],
+		0
 	);
 
 	if (!this.trapRotation(startPolar, currentPolar)) {
-		this.rotate(currentPolar[1] - previousPolar[1]);
+		this._rotate(currentPolar[1] - previousPolar[1], 0);
 	}
+
+	this.renderAnimation();
 };
 
 Map.prototype.bindEvents = function bindEvents() {
@@ -451,9 +544,10 @@ Map.prototype.onDragStart = function onDragStart(event) {
 Map.prototype.onWheel = function onWheel(event) {
 	event.preventDefault();
 
-	var ratio = zoomRatios[event.deltaMode] || 1;
+	var ratio = zoomRatios[event.deltaMode] || 1,
+		duration = (!event.deltaMode ? 0 : defaultAnimationDuration);
 
-	this.zoomAtXY(event.deltaY * ratio * -0.005, eventToClient(event));
+	this.zoomAtXY(event.deltaY * ratio * -0.005, eventToClient(event), duration);
 };
 
 Map.prototype.onDblClick = function onDblClick(event) {
@@ -479,9 +573,11 @@ Map.prototype.onMouseMove = function onMouseMove(event) {
 
 	if (this._previousMouse != null) {
 		if (event.buttons === 1 && !event.altKey) {
+			this._isManipulatingCenter = true;
 			this.panByXY(
 				current[0] - this._previousMouse[0],
-				current[1] - this._previousMouse[1]
+				current[1] - this._previousMouse[1],
+				0
 			);
 		}
 		else if ((event.buttons === 1 && event.altKey) || event.buttons === 4) {
@@ -489,15 +585,15 @@ Map.prototype.onMouseMove = function onMouseMove(event) {
 			var previousPolar = this.clientToPolar(this._previousMouse),
 				currentPolar  = this.clientToPolar(current);
 
-			var zoom = this.zoom + log2(currentPolar[0] / previousPolar[0]),
-				rotation = this.rotation + currentPolar[1] - previousPolar[1];
-				// rotation = this.rotation;
+			this._setZoom(this.zoom + log2(currentPolar[0] / previousPolar[0]), 0);
 
 			// if (!this.trapRotation(startPolar, currentPolar)) {
 			// 	rotation += currentPolar[1] - previousPolar[1];
 			// }
 
-			this.setView(this.normalizedCenter, zoom, rotation);
+			this._rotate(currentPolar[1] - previousPolar[1], 0);
+
+			this.renderAnimation();
 		}
 	}
 
@@ -508,6 +604,9 @@ Map.prototype.onMouseUp = function onMouseUp(event) {
 	event.preventDefault();
 	this._previousMouse = null;
 	this.snapRotation();
+
+	this._isManipulatingCenter = false;
+	this._fire('moveend');
 };
 
 Map.prototype.onTouchStart = function onTouchStart(event) {
@@ -565,6 +664,9 @@ Map.prototype.onTouchEnd = function onTouchEnd(event) {
 	this._previousTouch0 = this._previousTouch1 = null;
 	this.snapRotation();
 
+	this._isManipulatingCenter = false;
+	this._fire('moveend');
+
 	var client = eventToClient(event.changedTouches[0]);
 
 	if (event.touches.length === 0 && this._checkTap(client)) {
@@ -575,6 +677,33 @@ Map.prototype.onTouchEnd = function onTouchEnd(event) {
 };
 
 function noop() {}
+
+function lerp(now, transition, ease) {
+	ease = ease || easeInOut;
+
+	var duration = transition.duration,
+		elapsed = now - transition.startTime;
+
+	if (!duration || elapsed >= duration) {
+		return transition.delta + transition.startValue;
+	}
+
+	var t = (elapsed < duration) ? (elapsed / duration) : 1;
+
+	return ease(t) * transition.delta + transition.startValue;
+}
+
+function easeInOut(n) {
+	var q = .48 - n / 1.04,
+		Q = Math.sqrt(.1734 + q * q),
+		x = Q - q,
+		X = Math.pow(Math.abs(x), 1 / 3) * (x < 0 ? -1 : 1),
+		y = -Q - q,
+		Y = Math.pow(Math.abs(y), 1 / 3) * (y < 0 ? -1 : 1),
+		t = X + Y + .5;
+
+	return (1 - t) * 3 * t * t + t * t * t;
+}
 
 function clamp(x, min, max) {
 	return (
