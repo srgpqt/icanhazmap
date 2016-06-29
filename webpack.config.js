@@ -2,11 +2,14 @@ var path = require('path');
 
 module.exports = {
 	devtool: 'source-map',
-	entry: './src/index.js',
+	entry: {
+		'MicroMap': './src/index.js',
+		'MicroMapTopoJSON': './src/topojson',
+	},
 	output: {
 		path: path.join(__dirname, 'dist'),
-		filename: 'micromap.js',
-		library: 'MicroMap',
+		filename: '[name].js',
+		library: '[name]',
 		libraryTarget: 'umd'
 	}
 };

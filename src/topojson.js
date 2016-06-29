@@ -1,3 +1,5 @@
+var requestTimeout = 15000;
+
 var colors = {
 	base: '#f7ecdc',
 	land: '#f7ecdc',
@@ -78,7 +80,8 @@ var colorMap = {
 	wood: colors.wooded
 };
 
-exports.normalize = function normalize(topojson, projection, tileX, tileY, tileZ) {
+exports.normalize = normalize;
+function normalize(topojson, projection, tileX, tileY, tileZ) {
 	var arcs = topojson.arcs,
 		transform = topojson.transform,
 		scale = transform.scale,
@@ -112,7 +115,8 @@ exports.normalize = function normalize(topojson, projection, tileX, tileY, tileZ
 	return topojson;
 }
 
-exports.draw = function draw(context, width, height, topojson) {
+exports.draw = draw;
+function draw(context, width, height, topojson) {
 	var objects = topojson.objects,
 		transform = topojson.transform,
 		drawFunctions = {
@@ -208,4 +212,92 @@ exports.draw = function draw(context, width, height, topojson) {
 
 	context.fillStyle = context.strokeStyle = '#B1ADA9';
 	drawObjects([ objects['roads'] ]);
+}
+
+exports.loadVectorXhr = loadVectorXhr;
+function loadVectorXhr(projection, tileX, tileY, tileZ, url, onComplete) {
+	var xhr = new XMLHttpRequest();
+	var vectorContext = {
+		projection: projection,
+		topojson: null
+	};
+
+	onComplete = onComplete || noop;
+
+	function onXhrReadyStateChange() {
+		if (this.readyState !== 4) {
+			return;
+		}
+
+		this.onreadystatechange = xhr = null;
+
+		if (this.response == null) {
+			onComplete(new Error('loadVectorXhr: xhr error'), null, this);
+		}
+		else {
+			vectorContext.topojson = normalize(this.response, projection, tileX, tileY, tileZ);
+			onComplete(null, vectorContext.topojson, this);
+		}
+	}
+
+	xhr.timeout = requestTimeout;
+	xhr.responseType = 'json';
+	xhr.onreadystatechange = onXhrReadyStateChange;
+
+	xhr.open('GET', url, true);
+	xhr.setRequestHeader('Accept', 'application/json');
+	xhr.send();
+
+	return {
+		isDrawable: vectorTileComplete.bind(vectorContext),
+		isComplete: vectorTileComplete.bind(vectorContext),
+		drawTile: drawVectorTile.bind(vectorContext),
+		drawSubTile: drawVectorSubTile.bind(vectorContext),
+		abort: xhr.abort.bind(xhr)
+	};
+};
+
+function vectorTileComplete() {
+	return this.topojson != null;
+}
+
+var tempVectorTileCanvas = document.createElement('canvas');
+var tempVectorTileContext = tempVectorTileCanvas.getContext('2d');
+function drawVectorTile(context, destX, destY, destWidth, destHeight) {
+	var tempCanvas = tempVectorTileCanvas;
+
+	if (tempCanvas.width !== destWidth) {
+		tempCanvas.width = destWidth;
+	}
+
+	if (tempCanvas.height !== destHeight) {
+		tempCanvas.height = destHeight;
+	}
+
+	tempVectorTileContext.setTransform(1, 0, 0, 1, 0, 0);
+	tempVectorTileContext.clearRect(0, 0, destWidth, destHeight);
+	draw(tempVectorTileContext, destWidth, destHeight, this.topojson);
+
+	context.drawImage(tempCanvas, destX, destY, destWidth, destHeight);
+}
+
+var tempVectorSubTileCanvas = document.createElement('canvas');
+var tempVectorSubTileContext = tempVectorSubTileCanvas.getContext('2d');
+function drawVectorSubTile(context, subLevel, subX, subY, destX, destY, destWidth, destHeight) {
+	var tempCanvas = tempVectorSubTileCanvas;
+
+	if (tempCanvas.width !== destWidth) {
+		tempCanvas.width = destWidth;
+	}
+
+	if (tempCanvas.height !== destHeight) {
+		tempCanvas.height = destHeight;
+	}
+
+	tempVectorSubTileContext.setTransform(1, 0, 0, 1, 0, 0);
+	tempVectorSubTileContext.clearRect(0, 0, destWidth, destHeight);
+	tempVectorSubTileContext.setTransform(1, 0, 0, 1, -subX * destWidth, -subY * destHeight);
+	draw(tempVectorSubTileContext, destWidth << subLevel, destHeight << subLevel, this.topojson);
+
+	context.drawImage(tempCanvas, destX, destY, destWidth, destHeight);
 }
