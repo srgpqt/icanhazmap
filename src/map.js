@@ -266,7 +266,7 @@ Map.prototype._panToNormalized = function _panToNormalized(normalizedCoords, dur
 	], duration);
 };
 
-Map.prototype._panByNormalized = function _panByNormalized(deltaCoords, duration) {
+Map.prototype._panByNormalized = function _panByNormalized(deltaCoords, duration, ease) {
 	var now = new Date().getTime();
 
 	this.longitudeTransition = {
@@ -274,6 +274,7 @@ Map.prototype._panByNormalized = function _panByNormalized(deltaCoords, duration
 		delta: deltaCoords[0],
 		startTime: now,
 		duration: (duration != null) ? duration : defaultAnimationDuration,
+		ease: ease || easeInOutCubic,
 		active: true
 	};
 
@@ -282,6 +283,7 @@ Map.prototype._panByNormalized = function _panByNormalized(deltaCoords, duration
 		delta: deltaCoords[1],
 		startTime: now,
 		duration: (duration != null) ? duration : defaultAnimationDuration,
+		ease: ease || easeInOutCubic,
 		active: true
 	};
 };
@@ -296,7 +298,7 @@ Map.prototype.setZoom = function setZoom(zoom, duration) {
 	this.renderAnimation();
 };
 
-Map.prototype._zoomBy = function _zoomBy(zoomDelta, duration) {
+Map.prototype._zoomBy = function _zoomBy(zoomDelta, duration, ease) {
 	var zoom = clamp(this.zoom + zoomDelta, this.minZoom, this.maxZoom);
 
 	this.zoomTransition = {
@@ -304,36 +306,39 @@ Map.prototype._zoomBy = function _zoomBy(zoomDelta, duration) {
 		delta: zoom - this.zoom,
 		startTime: new Date().getTime(),
 		duration: (duration != null) ? duration : defaultAnimationDuration,
+		ease: ease || easeInOutCubic,
 		active: true
 	};
 };
 
-Map.prototype.rotate = function rotate(radians, duration) {
+Map.prototype.rotate = function rotate(radians, duration, ease) {
 	this._rotate.apply(this, arguments);
 	this.renderAnimation();
 };
 
-Map.prototype._rotate = function _rotate(radians, duration) {
+Map.prototype._rotate = function _rotate(radians, duration, ease) {
 	this.rotationTransition = {
 		startValue: this.rotation,
 		delta: radians,
 		startTime: new Date().getTime(),
 		duration: (duration != null) ? duration : defaultAnimationDuration,
+		ease: ease || easeInOutCubic,
 		active: true
 	};
 };
 
-Map.prototype.setRotation = function setRotation(radians, duration) {
+Map.prototype.setRotation = function setRotation(radians, duration, ease) {
 	this._setRotation.apply(this, arguments);
 	this.renderAnimation();
 };
 
-Map.prototype._setRotation = function _setRotation(radians, duration) {
+Map.prototype._setRotation = function _setRotation(radians, duration, ease) {
 	this.rotationTransition = {
 		startValue: this.rotation,
 		delta: wrapDelta(radians, this.rotation, PI2),
 		startTime: new Date().getTime(),
 		duration: (duration != null) ? duration : defaultAnimationDuration,
+		ease: ease || easeInOutCubic,
 		active: true
 	};
 };
@@ -716,9 +721,7 @@ Map.prototype.onTouchEnd = function onTouchEnd(event) {
 
 function noop() {}
 
-function lerp(now, transition, ease) {
-	ease = ease || easeInOutCubic;
-
+function lerp(now, transition) {
 	var duration = transition.duration,
 		elapsed = now - transition.startTime;
 
@@ -726,9 +729,7 @@ function lerp(now, transition, ease) {
 		return transition.delta + transition.startValue;
 	}
 
-	var t = (elapsed < duration) ? (elapsed / duration) : 1;
-
-	return ease(t) * transition.delta + transition.startValue;
+	return transition.ease(elapsed / duration) * transition.delta + transition.startValue;
 }
 
 function easeInOutCubic(t) {
