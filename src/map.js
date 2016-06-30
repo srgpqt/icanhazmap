@@ -51,7 +51,11 @@ function Map(options) {
 
 	this.projection = options.projection || WebMercator;
 	this.rotation   = options.rotation || 0;
-	this.normalizedCenter = options.center ? this.projection.normalize(options.center[0], options.center[1]) : [0, 0];
+	this.normalizedCenter = options.center ? this.lngLatToNormalized(options.center) : [0, 0];
+	this.normalizedBounds = !!options.maxBounds && [
+		this.lngLatToNormalized(options.maxBounds[0]),
+		this.lngLatToNormalized(options.maxBounds[1])
+	];
 
 	this._render = options.render || noop;
 	this._resize = this.resize.bind(this, null, null);
@@ -374,13 +378,35 @@ Map.prototype.renderAnimation = function renderAnimation() {
 		isMoving = false;
 
 	if (this.longitudeTransition.active) {
-		this.normalizedCenter = [wrap(lerp(now, this.longitudeTransition), 1), this.normalizedCenter[1]];
+		var v = wrap(lerp(now, this.longitudeTransition), 1);
+
+		if (this.normalizedBounds) {
+			if (wrapDelta(v, this.normalizedBounds[0][0], 1) < 0) {
+				v = this.normalizedBounds[0][0];
+			}
+			else if (wrapDelta(v, this.normalizedBounds[1][0], 1) > 0) {
+				v = this.normalizedBounds[1][0];
+			}
+		}
+
+		this.normalizedCenter = [v, this.normalizedCenter[1]];
 		this.longitudeTransition.active = now < this.longitudeTransition.startTime + this.longitudeTransition.duration;
 		isMoving = true;
 	}
 
 	if (this.latitudeTransition.active) {
-		this.normalizedCenter = [this.normalizedCenter[0], wrap(lerp(now, this.latitudeTransition), 1)];
+		var v = wrap(lerp(now, this.latitudeTransition), 1);
+
+		if (this.normalizedBounds) {
+			if (wrapDelta(v, this.normalizedBounds[0][1], 1) > 0) {
+				v = this.normalizedBounds[0][1];
+			}
+			else if (wrapDelta(v, this.normalizedBounds[1][1], 1) < 0) {
+				v = this.normalizedBounds[1][1];
+			}
+		}
+
+		this.normalizedCenter = [this.normalizedCenter[0], v];
 		this.latitudeTransition.active = now < this.latitudeTransition.startTime + this.latitudeTransition.duration;
 		isMoving = true;
 	}
