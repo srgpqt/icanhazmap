@@ -717,7 +717,7 @@ Map.prototype.onTouchEnd = function onTouchEnd(event) {
 function noop() {}
 
 function lerp(now, transition, ease) {
-	ease = ease || easeInOut;
+	ease = ease || easeInOutCubic;
 
 	var duration = transition.duration,
 		elapsed = now - transition.startTime;
@@ -731,16 +731,11 @@ function lerp(now, transition, ease) {
 	return ease(t) * transition.delta + transition.startValue;
 }
 
-function easeInOut(n) {
-	var q = .48 - n / 1.04,
-		Q = Math.sqrt(.1734 + q * q),
-		x = Q - q,
-		X = Math.pow(Math.abs(x), 1 / 3) * (x < 0 ? -1 : 1),
-		y = -Q - q,
-		Y = Math.pow(Math.abs(y), 1 / 3) * (y < 0 ? -1 : 1),
-		t = X + Y + .5;
-
-	return (1 - t) * 3 * t * t + t * t * t;
+function easeInOutCubic(t) {
+	t *= 2;
+	if (t < 1) return 0.5*t*t*t;
+	t -= 2;
+	return 0.5*(t*t*t + 2);
 }
 
 function clamp(x, min, max) {
