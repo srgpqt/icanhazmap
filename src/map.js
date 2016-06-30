@@ -10,6 +10,10 @@ var PI2 = Math.PI * 2,
 	maxTapDuration = 500,
 	tapDistanceTolerance2 = 17 * 17,
 	defaultAnimationDuration = 400,
+	momentumSamples = 2,
+	momentumMaxSamples = 16,
+	momentumDuration = 750,
+	momentumTimeWindow = momentumDuration + 150,
 	rotationSnapStep = Math.PI * 0.25,
 	rotationSnapTolerance = Math.PI / 180 * 12,
 	rotationLockDeadZone = 40,
@@ -68,6 +72,11 @@ function Map(options) {
 	this.latitudeTransition  = {};
 	this.zoomTransition      = {};
 	this.rotationTransition  = {};
+
+	this._longitudeMomentum = [];
+	this._latitudeMomentum  = [];
+	this._zoomMomentum      = [];
+	this._rotationMomentum  = [];
 
 	if (options.interactive !== false) {
 		this.bindEvents();
@@ -343,8 +352,43 @@ Map.prototype._setRotation = function _setRotation(radians, duration, ease) {
 	};
 };
 
-Map.prototype._finalizeManipulation = function _finalizeManipulation(duration) {
-	this._rotate(this._snapRotation(this.rotation), duration);
+Map.prototype._clearManipulation = function _clearManipulation() {
+	this._rotationLocked = null;
+	this._longitudeMomentum.length = 0;
+	this._latitudeMomentum.length  = 0;
+	this._zoomMomentum.length      = 0;
+	this._rotationMomentum.length  = 0;
+
+	// stop transitions
+	this._panByNormalized([0,0], 0);
+	this._zoomBy(0, 0);
+	this._rotate(0, 0);
+}
+
+Map.prototype._finalizeManipulation = function _finalizeManipulation() {
+	// Create momentum effect by extrapolating view transitions
+	var now = new Date().getTime(),
+		extrapolatedTime = now + momentumDuration;
+
+	if (!this.longitudeTransition.active && !this.latitudeTransition.active) {
+		var longitudeDelta = extrapolate(extrapolatedTime, this._longitudeMomentum),
+			latitudeDelta = extrapolate(extrapolatedTime, this._latitudeMomentum);
+
+		this._panByNormalized([longitudeDelta, latitudeDelta], momentumDuration, easeOutCubic);
+	}
+
+	if (!this.zoomTransition.active) {
+		var zoomDelta = extrapolate(extrapolatedTime, this._zoomMomentum);
+
+		this._zoomBy(zoomDelta, momentumDuration, easeOutCubic);
+	}
+
+	if (!this.rotationTransition.active) {
+		var rotationDelta = extrapolate(extrapolatedTime, this._rotationMomentum);
+
+		rotationDelta += this._snapRotation(this.rotation + rotationDelta);
+		this._rotate(rotationDelta, momentumDuration, easeOutCubic);
+	}
 
 	this._scheduleRender();
 
@@ -507,11 +551,16 @@ Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, pr
 	this._isManipulatingCenter = true;
 
 	if (currentTouch1 == null) {
-		return this.panByXY(
+		this.panByXY(
 			currentTouch0[0] - previousTouch0[0],
 			currentTouch0[1] - previousTouch0[1],
 			0
 		);
+
+		updateMomentum(this._latitudeMomentum, this.latitudeTransition);
+		updateMomentum(this._longitudeMomentum, this.longitudeTransition);
+
+		return;
 	}
 
 	var previousCenter = [ (previousTouch0[0] + previousTouch1[0]) * 0.5, (previousTouch0[1] + previousTouch1[1]) * 0.5 ],
@@ -533,15 +582,19 @@ Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, pr
 	);
 
 	this._zoomBy(log2(currentPolar[0] / previousPolar[0]), 0);
+	updateMomentum(this._zoomMomentum, this.zoomTransition);
 
 	this._panByXY(
 		currentCenter[0] - previousCenter[0],
 		currentCenter[1] - previousCenter[1],
 		0
 	);
+	updateMomentum(this._latitudeMomentum, this.latitudeTransition);
+	updateMomentum(this._longitudeMomentum, this.longitudeTransition);
 
 	if (!this.trapRotation(startPolar, currentPolar)) {
 		this._rotate(currentPolar[1] - previousPolar[1], 0);
+		updateMomentum(this._rotationMomentum, this.rotationTransition);
 	}
 
 	this.renderAnimation();
@@ -610,9 +663,9 @@ Map.prototype.onDblClick = function onDblClick(event) {
 Map.prototype.onMouseDown = function onMouseDown(event) {
 	event.preventDefault();
 	this._previousMouse = this._startMouse = eventToClient(event);
-	this._rotationLocked = null;
 	this._tappedTime = new Date().getTime();
 	this._tappedTouch = this._startMouse;
+	this._clearManipulation();
 };
 
 Map.prototype.onMouseMove = function onMouseMove(event) {
@@ -628,6 +681,8 @@ Map.prototype.onMouseMove = function onMouseMove(event) {
 				current[1] - this._previousMouse[1],
 				0
 			);
+			updateMomentum(this._latitudeMomentum, this.latitudeTransition);
+			updateMomentum(this._longitudeMomentum, this.longitudeTransition);
 		}
 		else if ((event.buttons === 1 && event.altKey) || event.buttons === 4) {
 			// var startPolar    = this.clientToPolar(this._startMouse),
@@ -635,12 +690,14 @@ Map.prototype.onMouseMove = function onMouseMove(event) {
 				currentPolar  = this.clientToPolar(current);
 
 			this._zoomBy(log2(currentPolar[0] / previousPolar[0]), 0);
+			updateMomentum(this._zoomMomentum, this.zoomTransition);
 
 			// if (!this.trapRotation(startPolar, currentPolar)) {
 			// 	rotation += currentPolar[1] - previousPolar[1];
 			// }
 
 			this._rotate(currentPolar[1] - previousPolar[1], 0);
+			updateMomentum(this._rotationMomentum, this.rotationTransition);
 
 			this.renderAnimation();
 		}
@@ -663,7 +720,7 @@ Map.prototype.onTouchStart = function onTouchStart(event) {
 
 	this._previousTouch0 = this._startTouch0 = touch0 && eventToClient(touch0);
 	this._previousTouch1 = this._startTouch1 = touch1 && eventToClient(touch1);
-	this._rotationLocked = null;
+	this._clearManipulation();
 
 	if (this._checkDoubleTap(event.touches)) {
 		this._tappedTime = null;
@@ -721,6 +778,14 @@ Map.prototype.onTouchEnd = function onTouchEnd(event) {
 
 function noop() {}
 
+function updateMomentum(momentum, transition) {
+	if (momentum.length >= momentumMaxSamples*2) {
+		momentum.splice(0, 2);
+	}
+
+	momentum.push(transition.startTime, transition.delta)
+}
+
 function lerp(now, transition) {
 	var duration = transition.duration,
 		elapsed = now - transition.startTime;
@@ -732,11 +797,45 @@ function lerp(now, transition) {
 	return transition.ease(elapsed / duration) * transition.delta + transition.startValue;
 }
 
+// extrapolate a value based on the time series array of [time, v] pairs
+function extrapolate(endTime, momentum) {
+	var sum = 0, n = 0,
+		firstTime = 0,
+		lastTime = 0;
+
+	for (var i = 1; i < momentum.length; i += 2) {
+		var t = momentum[i-1], v = momentum[i];
+
+		if (t < endTime - momentumTimeWindow) {
+			continue;
+		}
+
+		if (!firstTime) {
+			firstTime = t;
+		}
+
+		lastTime = t;
+		sum += v;
+		++n;
+	}
+
+	if (n < momentumSamples || lastTime === firstTime) {
+		return 0;
+	}
+
+	return sum / n / (lastTime - firstTime) * (endTime - lastTime);
+}
+
 function easeInOutCubic(t) {
 	t *= 2;
 	if (t < 1) return 0.5*t*t*t;
 	t -= 2;
 	return 0.5*(t*t*t + 2);
+}
+
+function easeOutCubic(t) {
+	t--;
+	return t*t*t + 1;
 }
 
 function clamp(x, min, max) {
