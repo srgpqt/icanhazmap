@@ -1,9 +1,12 @@
+var hasOwn = {}.hasOwnProperty;
 var quadrants = [1, 1, -1, -1, 1, -1, -1, 1];
 
 module.exports = TileLayer;
 function TileLayer(options) {
 	this.cacheKeys = [];
 	this.cache = {};
+	this.loading = {};
+	this.unused = {};
 
 	this.loader = options.loader;
 	this.cacheSize = options.cacheSize || 64;
@@ -17,10 +20,32 @@ TileLayer.prototype.getTile = function getTile(tileX, tileY, tileZ, pixelRatio, 
 		this.cache[key] = tile = this.loader(tileX, tileY, tileZ, pixelRatio, this.onTileComplete.bind(this, key));
 	}
 
+	if (tile && !tile.isComplete()) {
+		this.loading[key] = tile;
+	}
+
+	delete this.unused[key];
+
 	return tile;
 };
 
-TileLayer.prototype.onTileComplete = function onTileComplete(key, error) {
+TileLayer.prototype.abortUnused = function abortUnused() {
+	for (var k in this.unused) {
+		if (hasOwn.call(this.unused, k)) {
+			this.unused[k].abort();
+			delete this.cache[k];
+		}
+	}
+
+	this.unused = this.loading;
+	this.loading = {};
+};
+
+TileLayer.prototype.onTileComplete = function onTileComplete(key, error, tile) {
+	if (!error && tile) {
+		delete this.loading[key];
+		delete this.unused[key];
+	}
 };
 
 TileLayer.prototype.render = function render(context, width, height, normalizedCenter, zoom, rotation, pixelRatio, nominalTileSize) {

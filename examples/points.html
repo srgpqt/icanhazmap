@@ -127,6 +127,7 @@
 			this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
 			this.renderTiles(tileLayer);
+			tileLayer.abortUnused();
 
 			this.resetTransform();
 			this.context.fillStyle = '#0000ff';
