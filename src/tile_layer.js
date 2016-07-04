@@ -3,13 +3,13 @@ var quadrants = [1, 1, -1, -1, 1, -1, -1, 1];
 
 module.exports = TileLayer;
 function TileLayer(options) {
-	this.cacheKeys = [];
+	this.cacheSize = 0;
 	this.cache = {};
 	this.loading = {};
 	this.unused = {};
 
 	this.loader = options.loader;
-	this.cacheSize = options.cacheSize || 64;
+	this.cacheMaxSize = options.cacheMaxSize || 64;
 }
 
 TileLayer.prototype.getTile = function getTile(tileX, tileY, tileZ, pixelRatio, loadIfMissing) {
@@ -17,11 +17,28 @@ TileLayer.prototype.getTile = function getTile(tileX, tileY, tileZ, pixelRatio, 
 	var tile = this.cache[key];
 
 	if (tile == null && loadIfMissing) {
-		this.cache[key] = tile = this.loader(tileX, tileY, tileZ, pixelRatio, this.onTileComplete.bind(this, key));
+		tile = this.loader(tileX, tileY, tileZ, pixelRatio, this.onTileComplete.bind(this, key));
+
+		if (tile) {
+			if (this.cacheSize < this.cacheMaxSize) {
+				this.cacheSize++;
+			}
+			else {
+				var lru = this.findLeastRecentlyUsed();
+
+				delete this.cache[lru];
+			}
+
+			this.cache[key] = tile;
+		}
 	}
 
-	if (tile && !tile.isComplete()) {
-		this.loading[key] = tile;
+	if (tile) {
+		tile.usedAt = new Date().getTime();
+
+		if (!tile.isComplete()) {
+			this.loading[key] = tile;
+		}
 	}
 
 	delete this.unused[key];
@@ -33,7 +50,11 @@ TileLayer.prototype.abortUnused = function abortUnused() {
 	for (var k in this.unused) {
 		if (hasOwn.call(this.unused, k)) {
 			this.unused[k].abort();
-			delete this.cache[k];
+
+			if (hasOwn.call(this.cache, k)) {
+				delete this.cache[k];
+				this.cacheSize--;
+			}
 		}
 	}
 
@@ -46,6 +67,23 @@ TileLayer.prototype.onTileComplete = function onTileComplete(key, error, tile) {
 		delete this.loading[key];
 		delete this.unused[key];
 	}
+};
+
+TileLayer.prototype.findLeastRecentlyUsed = function findLeastRecentlyUsed() {
+	var cache = this.cache, oldestKey = -1, oldestTime = -1;
+
+	for (var k in cache) {
+		if (hasOwn.call(cache, k)) {
+			var usedAt = cache[k].usedAt;
+
+			if (usedAt < oldestTime) {
+				oldestKey = k;
+				oldestTime = usedAt;
+			}
+		}
+	}
+
+	return oldestKey;
 };
 
 TileLayer.prototype.render = function render(context, width, height, normalizedCenter, zoom, rotation, pixelRatio, nominalTileSize) {
