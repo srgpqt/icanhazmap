@@ -548,9 +548,13 @@ Map.prototype._checkDoubleTap = function _checkDoubleTap(touches) {
 };
 
 Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, previousTouch1, currentTouch1, startTouch0, startTouch1) {
+	if (currentTouch0 == null || previousTouch0 == null) {
+		return;
+	}
+
 	this._isManipulatingCenter = true;
 
-	if (currentTouch1 == null) {
+	if (previousTouch1 == null || currentTouch1 == null || startTouch0 == null || startTouch1 == null) {
 		this.panByXY(
 			currentTouch0[0] - previousTouch0[0],
 			currentTouch0[1] - previousTouch0[1],
