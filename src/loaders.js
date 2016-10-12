@@ -100,10 +100,10 @@ function loadImageXhr(url, onComplete) {
 	}
 
 	xhr.timeout = requestTimeout;
-	xhr.responseType = 'arraybuffer';
 	xhr.onreadystatechange = onXhrReadyStateChange;
 
 	xhr.open('GET', url, true);
+	xhr.responseType = 'arraybuffer';
 	xhr.send();
 
 	return {
