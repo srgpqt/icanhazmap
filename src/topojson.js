@@ -240,10 +240,10 @@ function loadVectorXhr(projection, tileX, tileY, tileZ, url, onComplete) {
 		}
 	}
 
-	xhr.timeout = requestTimeout;
 	xhr.onreadystatechange = onXhrReadyStateChange;
 
 	xhr.open('GET', url, true);
+	xhr.timeout = requestTimeout;
 	xhr.responseType = 'json';
 	xhr.setRequestHeader('Accept', 'application/json');
 	xhr.send();

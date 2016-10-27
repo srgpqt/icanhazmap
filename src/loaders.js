@@ -99,10 +99,10 @@ function loadImageXhr(url, onComplete) {
 		img.src = blobURL;
 	}
 
-	xhr.timeout = requestTimeout;
 	xhr.onreadystatechange = onXhrReadyStateChange;
 
 	xhr.open('GET', url, true);
+	xhr.timeout = requestTimeout;
 	xhr.responseType = 'arraybuffer';
 	xhr.send();
 
