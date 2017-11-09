@@ -55,6 +55,7 @@ function Map(options) {
 
 	this.projection = options.projection || WebMercator;
 	this.rotation   = options.rotation || 0;
+	this.canRotate  = (options.canRotate !== false);
 	this.normalizedCenter = options.center ? this.lngLatToNormalized(options.center) : [0, 0];
 	this.normalizedBounds = !!options.maxBounds && [
 		this.lngLatToNormalized(options.maxBounds[0]),
@@ -596,7 +597,7 @@ Map.prototype.manipulate = function manipulate(previousTouch0, currentTouch0, pr
 	updateMomentum(this._latitudeMomentum, this.latitudeTransition);
 	updateMomentum(this._longitudeMomentum, this.longitudeTransition);
 
-	if (!this.trapRotation(startPolar, currentPolar)) {
+	if (this.canRotate && !this.trapRotation(startPolar, currentPolar)) {
 		this._rotate(currentPolar[1] - previousPolar[1], 0);
 		updateMomentum(this._rotationMomentum, this.rotationTransition);
 	}
@@ -700,8 +701,10 @@ Map.prototype.onMouseMove = function onMouseMove(event) {
 			// 	rotation += currentPolar[1] - previousPolar[1];
 			// }
 
-			this._rotate(currentPolar[1] - previousPolar[1], 0);
-			updateMomentum(this._rotationMomentum, this.rotationTransition);
+			if (this.canRotate) {
+				this._rotate(currentPolar[1] - previousPolar[1], 0);
+				updateMomentum(this._rotationMomentum, this.rotationTransition);
+			}
 
 			this.renderAnimation();
 		}
