@@ -425,7 +425,8 @@ Map.prototype._renderAnimation = function _renderAnimation() {
 
 Map.prototype.renderAnimation = function renderAnimation() {
 	var now = new Date().getTime(),
-		isMoving = false;
+		isMoving = false,
+		isRotating = false;
 
 	if (this.longitudeTransition.active) {
 		var v = wrap(lerp(now, this.longitudeTransition), 1);
@@ -467,7 +468,10 @@ Map.prototype.renderAnimation = function renderAnimation() {
 	}
 
 	if (this.rotationTransition.active) {
-		this.rotation = wrap(lerp(now, this.rotationTransition), PI2);
+		var v = wrap(lerp(now, this.rotationTransition), PI2);;
+
+		isRotating = (v !== this.rotation);
+		this.rotation = v;
 		this.rotationTransition.active = now < this.rotationTransition.startTime + this.rotationTransition.duration;
 	}
 
@@ -488,6 +492,10 @@ Map.prototype.renderAnimation = function renderAnimation() {
 		if (!this._isManipulatingCenter && !this.longitudeTransition.active && !this.latitudeTransition.active) {
 			this._fire('moveend');
 		}
+	}
+
+	if (isRotating) {
+		this._fire('rotate');
 	}
 };
 
