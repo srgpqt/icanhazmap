@@ -278,6 +278,7 @@ Map.prototype._panToNormalized = function _panToNormalized(normalizedCoords, dur
 	this.longitudeTransition = {
 		startValue: this.normalizedCenter[0],
 		endValue: normalizedCoords[0],
+		delta: normalizedCoords[0] - this.normalizedCenter[0],
 		startTime: now,
 		duration: (duration != null) ? duration : defaultAnimationDuration,
 		ease: ease || easeInOutCubic,
@@ -287,6 +288,7 @@ Map.prototype._panToNormalized = function _panToNormalized(normalizedCoords, dur
 	this.latitudeTransition = {
 		startValue: this.normalizedCenter[1],
 		endValue: normalizedCoords[1],
+		delta: normalizedCoords[1] - this.normalizedCenter[1],
 		startTime: now,
 		duration: (duration != null) ? duration : defaultAnimationDuration,
 		ease: ease || easeInOutCubic,
@@ -321,6 +323,7 @@ Map.prototype._zoomTo = function _zoomTo(zoom, duration, ease) {
 	this.zoomTransition = {
 		startValue: this.zoom,
 		endValue: zoom,
+		delta: zoom - this.zoom,
 		startTime: new Date().getTime(),
 		duration: (duration != null) ? duration : defaultAnimationDuration,
 		ease: ease || easeInOutCubic,
@@ -329,28 +332,33 @@ Map.prototype._zoomTo = function _zoomTo(zoom, duration, ease) {
 };
 
 Map.prototype.rotate = function rotate(radians, duration, ease) {
-	this._setRotation(this.rotation + radians, duration, ease);
+	this._rotateBy(radians, duration, ease);
 	this.renderAnimation();
 };
 
 Map.prototype._rotateBy = function _rotateBy(radians, duration, ease) {
-	this._setRotation(this.rotation + radians, duration, ease);
-};
-
-Map.prototype.setRotation = function setRotation(radians, duration, ease) {
-	this._setRotation(radians, duration, ease);
-	this.renderAnimation();
-};
-
-Map.prototype._setRotation = function _setRotation(radians, duration, ease) {
 	this.rotationTransition = {
 		startValue: this.rotation,
-		endValue: radians,
+		endValue: this.rotation + radians,
+		delta: radians,
 		startTime: new Date().getTime(),
 		duration: (duration != null) ? duration : defaultAnimationDuration,
 		ease: ease || easeInOutCubic,
 		active: true
 	};
+};
+
+Map.prototype.setRotation = function setRotation(radians, duration, ease) {
+	this.rotationTransition = {
+		startValue: this.rotation,
+		endValue: radians,
+		delta: wrapDelta(radians, this.rotation, PI2),
+		startTime: new Date().getTime(),
+		duration: (duration != null) ? duration : defaultAnimationDuration,
+		ease: ease || easeInOutCubic,
+		active: true
+	};
+	this.renderAnimation();
 };
 
 Map.prototype._clearManipulation = function _clearManipulation() {
@@ -798,7 +806,7 @@ function updateMomentum(momentum, transition) {
 		momentum.splice(0, 2);
 	}
 
-	momentum.push(transition.startTime, transition.endValue - transition.startValue);
+	momentum.push(transition.startTime, transition.delta);
 }
 
 function lerp(now, transition) {
@@ -809,9 +817,7 @@ function lerp(now, transition) {
 		return transition.endValue;
 	}
 
-	var delta = transition.endValue - transition.startValue;
-
-	return transition.ease(elapsed / duration) * delta + transition.startValue;
+	return transition.ease(elapsed / duration) * transition.delta + transition.startValue;
 }
 
 // extrapolate a value based on the time series array of [time, v] pairs
